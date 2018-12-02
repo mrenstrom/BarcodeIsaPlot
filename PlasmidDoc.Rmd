@@ -1,0 +1,366 @@
+---
+title: "Plasmid and Virus Library Summary"
+author: "M Enstrom"
+date: "11/21/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("InitRisBC.R")
+```
+
+## Comparison of Plasmid and Virus libraries
+
+First load the master libraries and produce a combined plot of log (counts)
+
+Load plasmid and vector libraries
+
+```{r plasmid, echo=FALSE}
+nameP = "/Users/mark_enstrom/Barcode/plasmid/plasmid.txt"
+nameV = "/Users/mark_enstrom/Barcode/plasmid/virus.txt"
+
+plasmid <- read.csv(nameP,stringsAsFactors = FALSE,comment.char = '#',header = F)
+rownames(plasmid) = plasmid[,1]
+plasmid[,1] = c(1:nrow(plasmid))
+plasmid[,3] = log(plasmid[,2])
+plasmid[,4] = "plasmid"
+colnames(plasmid) <- c('barcode','count','l2count','source')
+#head(plasmid)
+
+virus <- read.csv(nameV,stringsAsFactors = FALSE,comment.char = '#',header = F)
+rownames(virus) = virus[,1]
+virus[,1] = c(1:nrow(virus))
+virus[,3] = log(virus[,2])
+virus[,4] = "virus & K562"
+colnames(virus) <- c('barcode','count','l2count','source')
+#head(virus)
+df <- rbind(plasmid,virus)
+
+g <- ggplot(df,aes(x=barcode,y=l2count,color=source,linetype=source))
+  g + geom_line() + 
+  theme_bw() +
+  theme(legend.position = c(0.8,0.75)) +
+  scale_color_manual(values=c("#000000", "#c0c0c0")) + 
+  scale_linetype_manual(values=c("solid","dotdash")) +
+  labs(x="Barcode rank",y="log(barcode abundance)",title="Barcode Library")# + coord_fixed(ratio=300)
+```
+
+
+## Top 100 Barcodes from Plasmid and Vector libraries
+
+Plot the top 100 barcodes from Plasmid and Vector libraries. Plot the actual counts, not log. 
+
+```{r Zoom, echo=FALSE}
+df <- rbind(plasmid[1:100,],virus[1:100,])
+
+g <- ggplot(df,aes(x=barcode,y=count,color=source,linetype=source))
+g + geom_line() + 
+  theme_bw() +
+  theme(legend.position = c(0.8,0.75)) +
+  scale_color_manual(values=c("#000000", "#c0c0c0")) + 
+  scale_linetype_manual(values=c("solid","dotdash")) +
+  labs(x="Barcode rank",y="Barcode abundance",title="Top 100 Plasmid and Virus Barcodes")# + coord_fixed(ratio=300)
+```
+
+## Overlap between Plasmid and Vector libraries
+
+How many of the top 100 Plasmid barcodes are located  in the Vector library and at what rank? Also how many of the top 100 Vector plasmids are located in the Plasmid library and at what rank.
+
+```{r cross compare, echo=FALSE}
+#
+# haw many plasmid top-100 barcodes are in virus
+#
+plasNames = rownames(plasmid)
+plasNames100 = plasNames[1:100]
+virusNames = rownames(virus)
+virusNames100 = virusNames[1:100]
+
+combined = unique(c(plasNames,virusNames))
+sprintf("Number of unique barcodes in plasmid  library = %d",length(plasNames))
+sprintf("Number of unique barcodes in virus    library = %d",length(virusNames))
+sprintf("Number of unique barcodes in combined library = %d",length(combined))
+sprintf("Number of new barcodes in virus library       = %d",length(combined)-length(plasNames))
+
+
+
+p1 = plasNames100 %in% plasNames
+v1 = virusNames100 %in% virusNames
+p2 = plasNames100 %in% virusNames
+v2 = virusNames100 %in% plasNames
+
+plasmidMatch = plasNames100[plasNames100 %in% virusNames]
+print(paste0("Number of top 100 Plasmid barcodes found in Vector library is ",length(plasmidMatch)))
+
+#plasmidMatch
+# 
+# 2 top plasmid barcodes in all of virus lib
+#
+print("Ranks in Vector library")
+s = sapply(plasmidMatch, function(bc) {
+  which(virusNames == bc)
+})
+#
+#
+#
+sort(unname(unlist(s)))
+
+virusMatch = virusNames100[virusNames100 %in% plasNames]
+print(paste0("Number of top 100 Vector barcodes found in Plasmid library is ",length(virusMatch)))
+
+#virusMatch
+
+s = sapply(virusMatch, function(bc) {
+  which(plasNames == bc)
+})
+print("Ranks in Plasmid Library")
+sort(unname(unlist(s)))
+```
+
+## Overlap between Z09132 barcodes and master libraries
+
+Take the top 100 ranked barcodes from Z09132 and find their ranks in the Plasmid and Vector libraries
+
+```{r Z09132 Comparison, echo=FALSE}
+l = length(bc9132@global[,1])
+print(paste0("Z09132 barcode library size is: ",l))
+#
+# 21399
+#
+#  what are the plasmid & virus ranks of the top 100 Z09132 barcodes?
+#
+a = length(which(bc9132@global[,1] %in% plasNames))
+b = length(which(bc9132@global[,1] %in% virusNames))
+print(paste0("Z09132 clones in  plasmid library: ",a," / ",l))
+print(paste0("Z09132 clones in vector library  : ",b," / ",l))
+#
+#  16332/21399 and 12424/21399
+#
+allNames = unique(c(plasNames,virusNames))
+l1 = length(allNames)
+#
+# total = 1218230
+#
+a = length(which(bc9132@global[,1] %in% allNames))
+print(paste0("Z09132 clones found in combined lib: ",a," / ",l))
+#
+# 18590/21399 in plasmid or virus
+#
+#
+# what are the ranks of the top 100 Z09132 barcodes in plasmid lib
+#
+z09top100 = bc9132@global[1:100,1]
+lp = length(which(z09top100 %in% plasNames))
+lv = length(which(z09top100 %in% virusNames))
+print("")
+sprintf("Found %d top 100 barcodes in Plasmid library, their ranks arer:",lp)
+# 91 & 98
+s = sapply(z09top100, function(bc) {
+  which(plasNames == bc)
+})
+sort(unname(unlist(s)))
+
+print("")
+sprintf("Found %d top 100 barcodes in Virus library, their ranks arer:",lv)
+s = sapply(z09top100, function(bc) {
+  which(virusNames == bc)
+})
+sort(unname(unlist(s)))
+
+
+
+
+```
+
+## Overlap between Z08103 barcodes and master libraries
+
+Take the top 100 ranked barcodes from Z08103 and find their ranks in the Plasmid and Vector libraries
+
+```{r Z08103 Comparison, echo=FALSE}
+l = length(bc8103@global[,1])
+print(paste0("Z08103 barcode library size is: ",l))
+#
+# 21399
+#
+#  what are the plasmid & virus ranks of the top 100 Z08103 barcodes?
+#
+a = length(which(bc8103@global[,1] %in% plasNames))
+b = length(which(bc8103@global[,1] %in% virusNames))
+print(paste0("Z08103 clones in plasmid library: ",a," / ",l))
+print(paste0("Z08103 clones in virus library:   ",b," / ",l))
+#
+#  16332/21399 and 12424/21399
+#
+allNames = unique(c(plasNames,virusNames))
+l1 = length(allNames)
+#
+# total = 1218230
+#
+a = length(which(bc8103@global[,1] %in% allNames))
+print(paste0("Z08103 clones in combined library: ",a," / ",l))
+#
+# 18590/21399 in plasmid or virus
+#
+#
+# what are the ranks of the top 100 Z08103 barcodes in plasmid lib
+#
+z09top100 = bc8103@global[1:100,1]
+lp = length(which(z09top100 %in% plasNames))
+lv = length(which(z09top100 %in% virusNames))
+print("")
+sprintf("Found %d top 100 barcodes in Plasmid library, their ranks arer:",lp)
+# 91 & 98
+s = sapply(z09top100, function(bc) {
+  which(plasNames == bc)
+})
+sort(unname(unlist(s)))
+
+print("")
+sprintf("Found %d top 100 barcodes in Virus library, their ranks arer:",lv)
+s = sapply(z09top100, function(bc) {
+  which(virusNames == bc)
+})
+sort(unname(unlist(s)))
+```
+## What is the probable size of the library (plasmid + vector + Z09132 + Z08103)
+```{r}
+
+entireLib = unique(c(allNames,bc9132@global[,1],bc8103@global[,1]))
+
+l1 = length(allNames)
+l2 = length(entireLib)
+
+sprintf("After adding Z09132 and Z08103, library size goes from %d to %d",l1,l2)
+
+```
+## How many single barcodes are in combined (plasmid/virus) library
+```{r singles, echo=FALSE}
+
+#
+# singles
+# 
+singles_9 = bc9132@global[which(bc9132@global[,3]== 1),1]
+sprintf("single barcodes in Z09132 = %d",length(singles_9))
+match_9 = singles_9[which(singles_9 %in% combined)]
+sprintf("single barcodes in Z09132 that match library = %d or %0.2f%s",length(match_9),length(match_9)/length(singles_9)*100,"%")
+
+singles_8 = bc8103@global[which(bc8103@global[,3]== 1),1]
+sprintf("single barcodes in Z08103 = %d",length(singles_8))
+match_8 = singles_8[which(singles_8 %in% combined)]
+sprintf("single barcodes in Z08103 that match library = %d or %0.2f%s",length(match_8),length(match_8)/length(singles_8)*100,"%")
+
+```
+
+
+
+
+
+
+## Simulation of Z08103 Duplicate Barcodes in Transfected Cells
+```{r Sim_1803_dup, echo=FALSE}
+cells = 5.76e6
+sprintf("Z08103 Initial number of cells infused = %d",cells)
+fGFP = 0.53
+sprintf("GFP fractions = %0.2f",fGFP)
+cells = cells * fGFP
+sprintf("Initial number of total possible clones = %3.2f",cells)
+sprintf("estimate 1/20 CD34+ cells are repopulating")
+cells = floor(cells / 20)
+sprintf("Estimated number of repopulated cells = %d",cells)
+
+loopCount = 100
+sprintf("Run simulation %d times",loopCount)
+
+ld = lapply(c(1:loopCount),function(x) {
+  a = sample(c(1:1218230),cells,replace = T)
+  a = sort(a)
+  a
+  r = rle(a)
+  r
+  l1 = length(which(r$lengths > 1))
+  l2 = length(which(r$lengths > 2))
+  l3 = length(which(r$lengths > 3))
+  l4 = length(which(r$lengths > 4))
+  
+  return(c(l1,l2,l3,l4))  
+})
+#
+# > 1
+#
+s = sapply(ld,function(x) {
+  return(x[1])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 1 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[2])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 2 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[3])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 3 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[4])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 4 = %3.2f   = %3.6f",s,s/cells)
+
+
+```
+## Z09132 Simulation
+```{r Sim_9132_dup, echo=FALSE}
+cells = 8.0e6
+sprintf("Z09132 Initial number of cells infused = %d",cells)
+fGFP = 0.29
+sprintf("GFP fractions = %0.2f",fGFP)
+cells = cells * fGFP
+sprintf("Initial number of total possible clones = %3.2f",cells)
+sprintf("estimate 1/20 CD34+ cells are repopulating")
+cells = floor(cells / 20)
+sprintf("Estimated number of repopulated cells = %d",cells)
+
+loopCount = 100
+
+sprintf("Run simulation %d times",loopCount)
+
+ld = lapply(c(1:loopCount),function(x) {
+  a = sample(c(1:1218230),cells,replace = T)
+  a = sort(a)
+  a
+  r = rle(a)
+  r
+  l1 = length(which(r$lengths > 1))
+  l2 = length(which(r$lengths > 2))
+  l3 = length(which(r$lengths > 3))
+  l4 = length(which(r$lengths > 4))
+  
+  return(c(l1,l2,l3,l4))  
+})
+#
+# > 1
+#
+s = sapply(ld,function(x) {
+  return(x[1])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 1 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[2])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 2 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[3])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 3 = %3.2f   = %3.6f",s,s/cells)
+s = sapply(ld,function(x) {
+  return(x[4])
+})
+s = mean(s)
+sprintf("Mean Barcodes selected > 4 = %3.2f   = %3.6f",s,s/cells)
+```
+
